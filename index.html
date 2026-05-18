@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malisa's Chicago Marathon Strength Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0f172a;
+    --card: #1e293b;
+    --card2: #273449;
+    --teal: #06b6d4;
+    --teal-light: #22d3ee;
+    --orange: #f97316;
+    --green: #22c55e;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #334155;
+    --phase1: #8b5cf6;
+    --phase2: #06b6d4;
+    --phase3: #f97316;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title { font-size: 1.1rem; font-weight: 700; color: var(--teal); }
+  .header-sub { font-size: 0.75rem; color: var(--muted); }
+  .header-badge {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.72rem;
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  /* NAV */
+  .nav {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-btn.active {
+    color: var(--teal);
+    border-bottom-color: var(--teal);
+  }
+  .nav-btn:hover { color: var(--text); }
+
+  /* PAGES */
+  .page { display: none; padding: 16px; max-width: 760px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* PHASE BADGE */
+  .phase-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .p1 { background: rgba(139,92,246,0.2); color: #a78bfa; border: 1px solid rgba(139,92,246,0.4); }
+  .p2 { background: rgba(6,182,212,0.2); color: var(--teal-light); border: 1px solid rgba(6,182,212,0.4); }
+  .p3 { background: rgba(249,115,22,0.2); color: #fb923c; border: 1px solid rgba(249,115,22,0.4); }
+
+  /* DASHBOARD */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box {
+    background: var(--card2);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--teal); line-height: 1; }
+  .stat-label { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+  .today-ex {
+    background: var(--card2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .today-ex-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(6,182,212,0.2);
+    color: var(--teal);
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .today-ex-name { font-size: 0.88rem; font-weight: 600; }
+  .today-ex-detail { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+  .core-tag {
+    background: rgba(34,197,94,0.15);
+    color: var(--green);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* DAY SELECTOR */
+  .day-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .day-btn {
+    background: var(--card2);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    color: var(--text);
+  }
+  .day-btn:hover { border-color: var(--teal); }
+  .day-btn.selected { border-color: var(--teal); background: rgba(6,182,212,0.1); }
+  .day-btn-name { font-size: 0.85rem; font-weight: 700; }
+  .day-btn-sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .day-btn-icon { font-size: 1.2rem; margin-bottom: 4px; }
+
+  /* EXERCISE LOGGER */
+  .ex-logger {
+    background: var(--card2);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .ex-logger-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .ex-name { font-size: 0.95rem; font-weight: 700; }
+  .ex-target { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .ex-note {
+    font-size: 0.7rem;
+    color: var(--green);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .set-row {
+    display: grid;
+    grid-template-columns: 28px 80px 80px 1fr 28px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .set-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+  .set-input {
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-size: 0.85rem;
+    width: 100%;
+    text-align: center;
+  }
+  .set-input:focus { outline: none; border-color: var(--teal); }
+  .set-input::placeholder { color: var(--border); }
+  .set-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--border);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .set-check.done { background: var(--green); }
+  .set-header { display: grid; grid-template-columns: 28px 80px 80px 1fr 28px; gap: 6px; margin-bottom: 6px; }
+  .set-header span { font-size: 0.65rem; color: var(--muted); text-align: center; text-transform: uppercase; }
+
+  .add-set-btn, .remove-set-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .add-set-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--teal); color: var(--navy); }
+  .btn-primary:hover { background: var(--teal-light); }
+  .btn-success { background: var(--green); color: white; }
+  .btn-ghost { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--teal); }
+  .btn-full { width: 100%; justify-content: center; padding: 13px; }
+  .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+
+  /* PROGRESS */
+  .chart-container { position: relative; height: 200px; margin-top: 10px; }
+  .ex-select {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 0.85rem;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+  .ex-select:focus { outline: none; border-color: var(--teal); }
+
+  .log-entry {
+    background: var(--card2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .log-date { font-size: 0.75rem; color: var(--muted); }
+  .log-sets { font-size: 0.82rem; color: var(--text); }
+  .log-best { font-size: 0.82rem; color: var(--teal); font-weight: 700; }
+  .pr-badge {
+    background: rgba(249,115,22,0.2);
+    color: var(--orange);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  /* PLAN REFERENCE */
+  .phase-section { margin-bottom: 20px; }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    background: var(--card2);
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    border: 1px solid var(--border);
+  }
+  .phase-header-text h3 { font-size: 0.95rem; font-weight: 700; }
+  .phase-header-text p { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .phase-chevron { margin-left: auto; color: var(--muted); transition: transform 0.2s; }
+  .phase-body { display: none; }
+  .phase-body.open { display: block; }
+
+  .workout-day-card {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .workout-day-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .plan-ex-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(51,65,85,0.5);
+    font-size: 0.82rem;
+  }
+  .plan-ex-row:last-child { border-bottom: none; }
+  .plan-ex-name { flex: 1; }
+  .plan-ex-scheme { color: var(--teal); font-weight: 600; font-size: 0.75rem; margin-right: 8px; }
+  .plan-ex-note-small { font-size: 0.68rem; color: var(--green); }
+
+  /* NOTES */
+  .tip-box {
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .tip-box strong { color: var(--green); }
+
+  /* WEEK SELECTOR */
+  .week-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .week-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .week-chip.active { background: rgba(6,182,212,0.2); color: var(--teal); border-color: var(--teal); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .empty-state p { font-size: 0.85rem; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--green);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* DIASTASIS ALERT */
+  .dr-alert {
+    background: rgba(139,92,246,0.1);
+    border: 1px solid rgba(139,92,246,0.4);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    color: #c4b5fd;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 480px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .day-grid { grid-template-columns: 1fr 1fr; }
+    .set-row { grid-template-columns: 24px 70px 70px 1fr 24px; gap: 4px; }
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  .flex-row { display: flex; align-items: center; gap: 8px; }
+  .ml-auto { margin-left: auto; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .text-sm { font-size: 0.8rem; color: var(--muted); }
+  .text-teal { color: var(--teal); }
+  .font-bold { font-weight: 700; }
+
+  .progress-bar-outer {
+    background: var(--card2);
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 6px;
+  }
+  .progress-bar-inner {
+    height: 6px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-light));
+    transition: width 0.5s;
+  }
+
+  select option { background: var(--card); }
+
+  /* SUGGESTION CHIP */
+  .suggestion-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .suggestion-chip.up   { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.35); }
+  .suggestion-chip.same { background: rgba(6,182,212,0.12); color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); }
+  .suggestion-chip.down { background: rgba(249,115,22,0.12); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+  .suggestion-chip.first { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.25); }
+
+  /* HOME TOGGLE */
+  .home-toggle-bar {
+    display: flex;
+    align-items: center;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+  .home-toggle-bar .label { font-size: 0.82rem; font-weight: 600; flex: 1; }
+  .home-toggle-bar .sub   { font-size: 0.7rem; color: var(--muted); }
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: 0.25s;
+  }
+  .toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.25s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--teal); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+  /* YOUTUBE BUTTON */
+  .yt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: rgba(255,0,0,0.12);
+    border: 1px solid rgba(255,0,0,0.3);
+    color: #f87171;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .yt-btn:hover { background: rgba(255,0,0,0.25); }
+  .yt-btn svg { width: 11px; height: 11px; fill: #f87171; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">🏃‍♀️ Chicago Marathon Strength</div>
+    <div class="header-sub">Malisa's 12-Week Plan · Oct 11, 2026</div>
+  </div>
+  <div class="header-badge" id="headerPhase">Phase 1 · Wk 1</div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="showPage('log')">💪 Log Workout</button>
+  <button class="nav-btn" onclick="showPage('progress')">📈 Progress</button>
+  <button class="nav-btn" onclick="showPage('plan')">📋 Plan</button>
+  <button class="nav-btn" onclick="showPage('settings')">⚙️ Settings</button>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════
+     DASHBOARD
+═══════════════════════════════════════ -->
+<div class="page active" id="page-dashboard">
+
+  <div class="card">
+    <div class="flex-row" style="margin-bottom:12px;">
+      <div>
+        <div id="db-phase-badge" class="phase-badge p1">Phase 1 · Restore</div>
+        <div style="font-size:1.15rem;font-weight:800;margin-top:6px;" id="db-week-title">Week 1 of 12</div>
+        <div class="text-sm" id="db-phase-focus">Deep core activation, movement quality, rebuilding strength base</div>
+      </div>
+    </div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="db-overall-progress" style="width:0%"></div>
+    </div>
+    <div class="text-sm mt-8" id="db-progress-label">0 of 12 weeks complete</div>
+  </div>
+
+  <div class="stat-grid" style="margin-bottom:14px;">
+    <div class="stat-box">
+      <div class="stat-num" id="db-workouts-done">0</div>
+      <div class="stat-label">Sessions Logged</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="db-sets-done">0</div>
+      <div class="stat-label">Total Sets Done</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="db-prs">0</div>
+      <div class="stat-label">PRs Hit</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="db-streak">0</div>
+      <div class="stat-label">Week Streak</div>
+    </div>
+  </div>
+
+  <div class="card" id="db-today-card">
+    <div class="card-title">Today's Workout</div>
+    <div id="db-today-content"></div>
+    <button class="btn btn-primary btn-full mt-12" onclick="goToLog()">Start Session →</button>
+  </div>
+
+  <div class="dr-alert">
+    <strong>💜 Diastasis Recti Reminder</strong><br>
+    You're already lifting heavy — that's great. But core pressure management still matters. Before each core exercise: exhale and draw your lower belly in. Watch for coning or doming at your midline. If you see it, regress. Your core will catch up with your strength.
+  </div>
+
+  <div class="card">
+    <div class="card-title">Marathon Countdown</div>
+    <div style="font-size:2rem;font-weight:800;color:var(--orange);" id="db-days-to-race">—</div>
+    <div class="text-sm">days until Chicago Marathon · Oct 11, 2026</div>
+    <div class="divider"></div>
+    <div class="flex-row">
+      <div class="text-sm">Strength training ends</div>
+      <div class="text-sm ml-auto text-teal font-bold">Aug 13, 2026</div>
+    </div>
+    <div class="flex-row mt-8">
+      <div class="text-sm">Taper begins</div>
+      <div class="text-sm ml-auto text-teal font-bold">~Sep 20, 2026</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════
+     LOG WORKOUT
+═══════════════════════════════════════ -->
+<div class="page" id="page-log">
+
+  <div class="card">
+    <div class="card-title">Select Week</div>
+    <div class="week-row" id="week-selector"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Select Workout Day</div>
+    <div class="day-grid" id="day-selector"></div>
+  </div>
+
+  <div id="log-workout-area" style="display:none;">
+    <div class="flex-row" style="margin-bottom:12px;">
+      <div>
+        <div style="font-size:1rem;font-weight:700;" id="log-day-title"></div>
+        <div class="text-sm" id="log-day-subtitle"></div>
+      </div>
+      <button class="btn btn-sm btn-ghost ml-auto" onclick="saveWorkout()">💾 Save</button>
+    </div>
+
+    <div class="home-toggle-bar">
+      <div>
+        <div class="label">🏠 Home Workout</div>
+        <div class="sub">DBs · KBs · Bands · Stability Ball</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="home-toggle-input" onchange="toggleHomeWorkout()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="tip-box">
+      <strong>Session tips:</strong> Rest 90 sec in Phase 1, 90–120 sec in Phase 2, 2–3 min for heavy compound work in Phase 3. Log weight in kg or lbs — be consistent! 🟢 = weight suggestion based on your last session.
+    </div>
+
+    <div id="exercise-list"></div>
+
+    <button class="btn btn-success btn-full" onclick="saveWorkout()" style="margin-top:8px;">
+      ✅ Complete Session
+    </button>
+  </div>
+
+  <div id="log-empty" class="empty-state">
+    <div class="icon">💪</div>
+    <p>Select a week and workout day above to begin logging.</p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════
+     PROGRESS
+═══════════════════════════════════════ -->
+<div class="page" id="page-progress">
+
+  <div class="card">
+    <div class="card-title">Exercise Progress</div>
+    <select class="ex-select" id="progress-ex-select" onchange="updateProgressChart()">
+      <option value="">Select an exercise...</option>
+    </select>
+    <div class="chart-container">
+      <canvas id="progressChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card" id="log-history-card">
+    <div class="card-title">Session History</div>
+    <div id="log-history-list">
+      <div class="empty-state"><div class="icon">📝</div><p>No sessions logged yet.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Core Progression Milestones</div>
+    <div id="core-milestones"></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════
+     PLAN REFERENCE
+═══════════════════════════════════════ -->
+<div class="page" id="page-plan">
+
+  <div class="dr-alert">
+    <strong>💜 Core Guidelines for Diastasis Recti</strong><br>
+    ✓ Exhale on exertion on every rep &nbsp;·&nbsp; ✓ No breath-holding &nbsp;·&nbsp; ✓ Stop if coning/doming appears<br>
+    ✗ No traditional crunches/sit-ups &nbsp;·&nbsp; ✗ No unmodified planks in Phase 1 &nbsp;·&nbsp; ✗ No double-leg lowering
+  </div>
+
+  <div id="plan-content"></div>
+
+</div>
+
+<!-- ═══════════════════════════════════════
+     SETTINGS
+═══════════════════════════════════════ -->
+<div class="page" id="page-settings">
+
+  <div class="card">
+    <div class="card-title">Your Plan Settings</div>
+    <div style="margin-bottom:12px;">
+      <label class="text-sm" style="display:block;margin-bottom:6px;">Plan Start Date</label>
+      <input type="date" id="start-date-input" class="set-input" style="text-align:left;width:auto;padding:8px 12px;"
+        onchange="saveStartDate()">
+    </div>
+    <div class="text-sm">Your plan runs 12 weeks from this date.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Weight Unit</div>
+    <div class="flex-row">
+      <button class="btn btn-ghost" id="unit-kg" onclick="setUnit('kg')">kg</button>
+      <button class="btn btn-primary" id="unit-lbs" onclick="setUnit('lbs')">lbs</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Data Management</div>
+    <button class="btn btn-ghost btn-full" onclick="exportData()" style="margin-bottom:8px;">
+      📤 Export All Data (JSON)
+    </button>
+    <button class="btn btn-ghost btn-full" onclick="clearData()" style="color:var(--red);border-color:var(--red);">
+      🗑 Clear All Logged Data
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">About This Plan</div>
+    <div class="text-sm" style="line-height:1.7;">
+      <strong style="color:var(--text);">Duration:</strong> 12 weeks (3 phases × 4 weeks)<br>
+      <strong style="color:var(--text);">Days/week:</strong> 4 strength sessions<br>
+      <strong style="color:var(--text);">Session length:</strong> 45–60 minutes<br>
+      <strong style="color:var(--text);">Equipment:</strong> Full gym<br>
+      <strong style="color:var(--text);">Goal:</strong> Support Chicago Marathon, postpartum body composition, safe core rebuild<br>
+      <strong style="color:var(--text);">Clearance:</strong> Designed for advanced lifter, strength training since week 8 postpartum, with diastasis recti<br><br>
+      <em>Always listen to your body. If you experience pain, pelvic pressure, or leaking, reduce load and consult a pelvic floor physio.</em>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════
+// WORKOUT PLAN DATA
+// ══════════════════════════════════════
+const PLAN = {
+  phases: [
+    {
+      id: 1,
+      name: "Phase 1: Loaded Foundation",
+      weeks: "Weeks 1–4",
+      badgeClass: "p1",
+      shortName: "Foundation",
+      focus: "Establish barbell strength base, safe core rebuild, running-specific movement patterns",
+      intensity: "RPE 7–8 · 4 sets · 6–10 reps · 90 sec rest",
+      color: "#8b5cf6",
+      days: [
+        {
+          id: "A",
+          name: "Day A",
+          focus: "Lower Body – Squat Dominant",
+          icon: "🏋️",
+          exercises: [
+            { name: "Back Squat", sets: 4, reps: "8", note: "Build to RPE 7-8 working sets — you know this lift", isCore: false },
+            { name: "Barbell Hip Thrust", sets: 4, reps: "10", note: "Loaded from day 1 — full glute squeeze at top", isCore: false },
+            { name: "Bulgarian Split Squat", sets: 3, reps: "10/side", note: "Load with DBs — single-leg stability for running", isCore: false },
+            { name: "Lateral Lunge", sets: 3, reps: "10/side", note: "Hip abductor strength — key for running gait mechanics", isCore: false },
+            { name: "Weighted Calf Raise", sets: 3, reps: "15", note: "Load up — achilles/soleus health for marathon", isCore: false },
+            { name: "Dead Bug", sets: 3, reps: "10/side", note: "TVA braced, lower back glued to floor — CORE SAFE", isCore: true },
+            { name: "Bird Dog", sets: 3, reps: "10/side", note: "Slow and controlled, no hip rotation — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "B",
+          name: "Day B",
+          focus: "Upper Body – Pull Focus",
+          icon: "💪",
+          exercises: [
+            { name: "Barbell Bent-Over Row", sets: 4, reps: "8", note: "Hinge to 45°, pull to lower chest, RPE 7-8", isCore: false },
+            { name: "Pull-Up / Weighted Pull-Up", sets: 4, reps: "8", note: "Add weight if bodyweight is easy for 8+", isCore: false },
+            { name: "Barbell Overhead Press", sets: 4, reps: "8", note: "Standing — brace core, don't flare ribs", isCore: false },
+            { name: "Cable Face Pull", sets: 3, reps: "15", note: "External rotation at top — non-negotiable for running posture", isCore: false },
+            { name: "Incline DB Curl", sets: 3, reps: "12", note: "Full stretch at bottom, slow eccentric", isCore: false },
+            { name: "Tricep Pushdown", sets: 3, reps: "15", note: "Elbows fixed — arm drive for running", isCore: false },
+            { name: "Pallof Press", sets: 3, reps: "12/side", note: "Anti-rotation — exhale as you press — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "C",
+          name: "Day C",
+          focus: "Lower Body – Hinge/Posterior Chain",
+          icon: "🍑",
+          exercises: [
+            { name: "Conventional Deadlift", sets: 4, reps: "6", note: "Loaded from day 1 — RPE 7-8, brace hard", isCore: false },
+            { name: "Barbell Hip Thrust", sets: 4, reps: "10", note: "Heavier than Day A — progressive overload", isCore: false },
+            { name: "Single-Leg RDL (DB)", sets: 3, reps: "10/side", note: "Hip stability on one leg = running mechanics", isCore: false },
+            { name: "Nordic Curl (machine/partner)", sets: 3, reps: "8", note: "Hamstring injury prevention — key for marathon", isCore: false },
+            { name: "Reverse Lunge (weighted)", sets: 3, reps: "10/side", note: "Less hip flexor stress than forward lunge", isCore: false },
+            { name: "Seated Calf Raise", sets: 3, reps: "15", note: "Targets soleus — Achilles health", isCore: false },
+            { name: "Side Plank (modified knee)", sets: 3, reps: "25-30 sec/side", note: "Check for hip sag or coning — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "D",
+          name: "Day D",
+          focus: "Upper Body – Push + Full Body",
+          icon: "🔱",
+          exercises: [
+            { name: "Barbell Bench Press", sets: 4, reps: "8", note: "RPE 7-8 working sets — controlled descent", isCore: false },
+            { name: "Incline DB Press", sets: 3, reps: "10", note: "30-45° — upper chest and shoulder health", isCore: false },
+            { name: "Single-Arm DB Row", sets: 3, reps: "12/side", note: "Long ROM — no hip rotation", isCore: false },
+            { name: "Step Up (weighted)", sets: 3, reps: "10/side", note: "Drive through heel, stand tall at top", isCore: false },
+            { name: "Cable Lateral Raise", sets: 3, reps: "15", note: "Shoulder health — runners need this", isCore: false },
+            { name: "Farmer's Carry", sets: 3, reps: "40m", note: "Heavy — tall spine, packed shoulders — CORE SAFE", isCore: true },
+            { name: "Heel Slide", sets: 3, reps: "15/side", note: "TVA braced throughout — CORE SAFE", isCore: true },
+          ]
+        }
+      ]
+    },
+    {
+      id: 2,
+      name: "Phase 2: Volume & Intensity",
+      weeks: "Weeks 5–8",
+      badgeClass: "p2",
+      shortName: "Volume",
+      focus: "Increase volume and intensity, tempo/pause variants, progress core to full planks",
+      intensity: "RPE 8 · 4–5 sets · 5–8 reps (main) / 10–12 reps (accessory) · 90–120 sec rest",
+      color: "#06b6d4",
+      days: [
+        {
+          id: "A",
+          name: "Day A",
+          focus: "Lower Body – Squat Dominant",
+          icon: "🏋️",
+          exercises: [
+            { name: "Back Squat", sets: 4, reps: "6", note: "Heavier than Phase 1 — build to RPE 8", isCore: false },
+            { name: "Pause Squat", sets: 2, reps: "5", note: "2-sec pause at bottom — strength through range", isCore: false },
+            { name: "Barbell Hip Thrust", sets: 4, reps: "10", note: "Heavier than Phase 1 — PR attempt week 8", isCore: false },
+            { name: "Bulgarian Split Squat", sets: 4, reps: "8/side", note: "Load heavier — barbell or heavy DBs", isCore: false },
+            { name: "Leg Press", sets: 3, reps: "12", note: "High foot position to bias glutes", isCore: false },
+            { name: "Dead Bug (weighted)", sets: 3, reps: "10/side", note: "DB in hands or band on feet — CORE SAFE", isCore: true },
+            { name: "Copenhagen Plank (modified)", sets: 3, reps: "25 sec/side", note: "Knee on bench — inner thigh + core — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "B",
+          name: "Day B",
+          focus: "Upper Body – Pull Focus",
+          icon: "💪",
+          exercises: [
+            { name: "Barbell Bent-Over Row", sets: 5, reps: "6", note: "Heavier than Phase 1 — explosively up, 3 sec down", isCore: false },
+            { name: "Weighted Pull-Up", sets: 4, reps: "6", note: "Increase load each week", isCore: false },
+            { name: "Barbell Overhead Press", sets: 4, reps: "6", note: "Heavier than Phase 1", isCore: false },
+            { name: "Cable Row (heavy)", sets: 4, reps: "10", note: "Full shoulder blade retraction and depression", isCore: false },
+            { name: "Rear Delt Fly", sets: 3, reps: "15", note: "Running posture — keep shoulders packed", isCore: false },
+            { name: "Hammer Curl", sets: 3, reps: "12", note: "Brachialis + forearm strength", isCore: false },
+            { name: "Pallof Press + Hold", sets: 3, reps: "12/side", note: "3-sec hold at full extension — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "C",
+          name: "Day C",
+          focus: "Lower Body – Hinge/Posterior Chain",
+          icon: "🍑",
+          exercises: [
+            { name: "Romanian Deadlift", sets: 4, reps: "6", note: "Heavier — 3-sec lowering, feel the hamstring load", isCore: false },
+            { name: "Barbell Hip Thrust (heavy)", sets: 5, reps: "8", note: "Max effort day — chase a PR by week 8", isCore: false },
+            { name: "Single-Leg RDL (heavier DB)", sets: 4, reps: "8/side", note: "Heavier than Phase 1 — hip stability + strength", isCore: false },
+            { name: "Nordic Curl", sets: 3, reps: "8", note: "Reduce assistance vs Phase 1", isCore: false },
+            { name: "Box Jump", sets: 3, reps: "6", note: "Running power — full hip extension at top, soft landing", isCore: false },
+            { name: "Weighted Calf Raise", sets: 4, reps: "12", note: "Heavier load — achilles tendon strength", isCore: false },
+            { name: "Side Plank (full)", sets: 3, reps: "30 sec/side", note: "Full version — stop if coning appears — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "D",
+          name: "Day D",
+          focus: "Upper Body – Push + Power",
+          icon: "🔱",
+          exercises: [
+            { name: "Barbell Bench Press", sets: 5, reps: "5", note: "Heavier — build to RPE 8-9 final set", isCore: false },
+            { name: "Close-Grip Bench Press", sets: 3, reps: "8", note: "Tricep emphasis — arm drive power", isCore: false },
+            { name: "Landmine Press", sets: 3, reps: "10/side", note: "Rotational stability — great for runners", isCore: false },
+            { name: "Step Up (explosive)", sets: 3, reps: "10/side", note: "Drive knee up fast at top — mimic running mechanics", isCore: false },
+            { name: "Lateral Bound", sets: 3, reps: "8/side", note: "Land on 1 leg, pause and hold — running power", isCore: false },
+            { name: "Farmer's Carry (heavy)", sets: 3, reps: "50m", note: "Heavier than Phase 1 — CORE SAFE", isCore: true },
+            { name: "Hollow Body Hold", sets: 3, reps: "25-35 sec", note: "Stop if coning — CORE SAFE", isCore: true },
+          ]
+        }
+      ]
+    },
+    {
+      id: 3,
+      name: "Phase 3: Peak Strength & Power",
+      weeks: "Weeks 9–12",
+      badgeClass: "p3",
+      shortName: "Peak",
+      focus: "3–5RM territory on main lifts, plyometric power, marathon-specific strength",
+      intensity: "RPE 8–9+ · 4–5 sets · 3–5 reps (main) · 2–3 min rest · deload week 12",
+      color: "#f97316",
+      days: [
+        {
+          id: "A",
+          name: "Day A",
+          focus: "Lower Body – Squat + Power",
+          icon: "🏋️",
+          exercises: [
+            { name: "Back Squat", sets: 5, reps: "3", note: "Heavy 3RM attempt — RPE 9, chase a PR by week 11", isCore: false },
+            { name: "Tempo Squat", sets: 3, reps: "5", note: "3-0-1 tempo — eccentric control under fatigue", isCore: false },
+            { name: "Barbell Hip Thrust (PR)", sets: 5, reps: "8", note: "Heaviest loading of the cycle — PR attempt", isCore: false },
+            { name: "Bulgarian Split Squat (heavy)", sets: 4, reps: "6/side", note: "Heaviest load yet — barbell preferred", isCore: false },
+            { name: "Walking Lunge (loaded)", sets: 3, reps: "12/side", note: "Metabolic finisher — running-specific endurance", isCore: false },
+            { name: "Dead Bug (banded feet)", sets: 3, reps: "10/side", note: "Band around feet for max resistance — CORE SAFE", isCore: true },
+            { name: "Copenhagen Plank (full)", sets: 3, reps: "35 sec/side", note: "Full version — foot on bench — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "B",
+          name: "Day B",
+          focus: "Upper Body – Strength Focus",
+          icon: "💪",
+          exercises: [
+            { name: "Deadlift", sets: 5, reps: "3", note: "Heavy 3RM — perfect bracing, explosive off floor", isCore: false },
+            { name: "Weighted Pull-Up (heavy)", sets: 4, reps: "4-5", note: "Heaviest loading — full ROM, no kipping", isCore: false },
+            { name: "Barbell Overhead Press", sets: 4, reps: "5", note: "Push for a 5RM by week 11", isCore: false },
+            { name: "Pendlay Row", sets: 4, reps: "5", note: "Dead stop each rep — explosive pull", isCore: false },
+            { name: "Cable Face Pull", sets: 3, reps: "15", note: "Shoulder health — never skip this", isCore: false },
+            { name: "Chin-Up", sets: 3, reps: "8", note: "Supinated grip — bicep + back", isCore: false },
+            { name: "Pallof Press + Rotation", sets: 3, reps: "12/side", note: "Add rotation at full extension — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "C",
+          name: "Day C",
+          focus: "Lower Body – Posterior Chain + Plyos",
+          icon: "🍑",
+          exercises: [
+            { name: "Trap Bar Deadlift", sets: 5, reps: "3", note: "Or conventional — explosive intent, 3RM attempt", isCore: false },
+            { name: "Barbell Hip Thrust (1RM attempt)", sets: 4, reps: "3-5", note: "Max effort — week 11 is PR attempt week", isCore: false },
+            { name: "Single-Leg RDL (heaviest)", sets: 4, reps: "6/side", note: "Heaviest of the cycle — hip stability under load", isCore: false },
+            { name: "Nordic Curl (unassisted)", sets: 3, reps: "8", note: "No assistance — hamstring resilience for marathon", isCore: false },
+            { name: "Box Jump", sets: 4, reps: "6", note: "Higher box — maximum power expression", isCore: false },
+            { name: "Heavy Calf Raise", sets: 4, reps: "10", note: "Max load — achilles health into race", isCore: false },
+            { name: "Side Plank + Hip Abduction", sets: 3, reps: "35 sec/side", note: "Lift top leg — glute med + obliques — CORE SAFE", isCore: true },
+          ]
+        },
+        {
+          id: "D",
+          name: "Day D",
+          focus: "Full Body – Power + Athletic",
+          icon: "🔱",
+          exercises: [
+            { name: "Power Clean (or Hang Clean)", sets: 4, reps: "4", note: "Explosive triple extension — running power and economy", isCore: false },
+            { name: "Push Press", sets: 4, reps: "5", note: "Heavy leg drive into overhead — total body power", isCore: false },
+            { name: "Step Up (heavy + explosive)", sets: 3, reps: "8/side", note: "Drive knee up aggressively — marathon running mechanics", isCore: false },
+            { name: "Lateral Bound (max effort)", sets: 3, reps: "8/side", note: "Maximum distance — land and stick on 1 leg", isCore: false },
+            { name: "Sled Push", sets: 4, reps: "30m", note: "Max effort — running-specific posterior chain power", isCore: false },
+            { name: "Ab Wheel Rollout", sets: 3, reps: "10-12", note: "Full or partial — only if NO coning — CORE SAFE", isCore: true },
+            { name: "Dead Hang", sets: 3, reps: "40 sec", note: "Spinal decompression + grip — recovery tool", isCore: false },
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// ══════════════════════════════════════
+// HOME WORKOUT PLAN (DBs, KBs, Bands, Stability Ball)
+// ══════════════════════════════════════
+const HOME_PLAN = {
+  // phase index (0/1/2) -> day index (0-3) -> exercises
+  0: { // Phase 1 – Foundation
+    0: [ // Day A – Lower Squat
+      { name: "KB/DB Goblet Squat", sets: 4, reps: "8", note: "Heaviest KB or DB — same RPE as barbell version", isCore: false },
+      { name: "DB Hip Thrust (floor)", sets: 4, reps: "10", note: "Shoulders on couch/bench, DB across hips", isCore: false },
+      { name: "DB Bulgarian Split Squat", sets: 3, reps: "10/side", note: "Rear foot on couch, DB in each hand", isCore: false },
+      { name: "DB Lateral Lunge", sets: 3, reps: "10/side", note: "Step wide, sit into hip — DB in goblet position", isCore: false },
+      { name: "DB Calf Raise (single leg)", sets: 3, reps: "15", note: "Stand on a stair or step, DB in hand", isCore: false },
+      { name: "Dead Bug", sets: 3, reps: "10/side", note: "TVA braced, lower back glued to floor — CORE SAFE", isCore: true },
+      { name: "Bird Dog", sets: 3, reps: "10/side", note: "Slow and controlled, no hip rotation — CORE SAFE", isCore: true },
+    ],
+    1: [ // Day B – Upper Pull
+      { name: "DB Bent-Over Row", sets: 4, reps: "8", note: "Hinge to 45°, pull DBs to lower chest", isCore: false },
+      { name: "Band Pull-Apart", sets: 4, reps: "15", note: "Arms straight, pull band to chest — posture work", isCore: false },
+      { name: "DB Overhead Press", sets: 4, reps: "8", note: "Standing — brace core, controlled descent", isCore: false },
+      { name: "Band Face Pull", sets: 3, reps: "15", note: "Anchor band at face height, pull to ears", isCore: false },
+      { name: "DB Incline Curl (stability ball)", sets: 3, reps: "12", note: "Lie back on stability ball — full stretch at bottom", isCore: false },
+      { name: "DB Tricep Kickback", sets: 3, reps: "15", note: "Hinge forward, elbow pinned — full extension", isCore: false },
+      { name: "Band Pallof Press", sets: 3, reps: "12/side", note: "Anchor band at hip height, anti-rotation — CORE SAFE", isCore: true },
+    ],
+    2: [ // Day C – Hinge/Posterior
+      { name: "KB/DB Romanian Deadlift", sets: 4, reps: "6", note: "Heaviest available — same hinge pattern as barbell", isCore: false },
+      { name: "DB Hip Thrust (floor, heavy)", sets: 4, reps: "10", note: "Stack DBs across hips — heavier than Day A", isCore: false },
+      { name: "Single-Leg RDL (DB)", sets: 3, reps: "10/side", note: "Hip stability for running — slow and controlled", isCore: false },
+      { name: "Nordic Curl (couch)", sets: 3, reps: "8", note: "Hook feet under couch, lower slowly — hamstring key", isCore: false },
+      { name: "DB Reverse Lunge", sets: 3, reps: "10/side", note: "Step back, knee just off floor", isCore: false },
+      { name: "DB Calf Raise (stair)", sets: 3, reps: "15", note: "Full range off a step — both feet", isCore: false },
+      { name: "Side Plank (modified knee)", sets: 3, reps: "25-30 sec/side", note: "Check for coning — CORE SAFE", isCore: true },
+    ],
+    3: [ // Day D – Push + Full Body
+      { name: "DB Floor Press", sets: 4, reps: "8", note: "Lie on floor — upper arm stops at floor level", isCore: false },
+      { name: "DB Incline Press (stability ball)", sets: 3, reps: "10", note: "Upper back on ball, feet on floor — stable base", isCore: false },
+      { name: "Single-Arm DB Row", sets: 3, reps: "12/side", note: "Brace on couch/knee — long range of motion", isCore: false },
+      { name: "Step Up (stairs)", sets: 3, reps: "10/side", note: "Drive through heel, stand tall at top", isCore: false },
+      { name: "DB Lateral Raise", sets: 3, reps: "15", note: "Shoulder health for running posture", isCore: false },
+      { name: "DB Farmer's Carry", sets: 3, reps: "40m", note: "Heaviest DBs — tall spine, packed shoulders — CORE SAFE", isCore: true },
+      { name: "Heel Slide", sets: 3, reps: "15/side", note: "TVA braced throughout — CORE SAFE", isCore: true },
+    ],
+  },
+  1: { // Phase 2 – Volume
+    0: [ // Day A – Lower Squat
+      { name: "KB/DB Goblet Squat (heavy)", sets: 4, reps: "6", note: "Heaviest KB you have — RPE 8", isCore: false },
+      { name: "DB Pause Squat", sets: 2, reps: "5", note: "Hold DB in goblet — 2-sec pause at bottom", isCore: false },
+      { name: "DB Hip Thrust (floor, heavy)", sets: 4, reps: "10", note: "Stack two DBs — heavier than Phase 1", isCore: false },
+      { name: "DB Bulgarian Split Squat", sets: 4, reps: "8/side", note: "Heavier than Phase 1 — barbell-like effort", isCore: false },
+      { name: "DB Lateral Lunge", sets: 3, reps: "12", note: "Add load vs Phase 1", isCore: false },
+      { name: "Dead Bug (weighted)", sets: 3, reps: "10/side", note: "Light DB in hands — CORE SAFE", isCore: true },
+      { name: "Copenhagen Plank (modified, foot on couch)", sets: 3, reps: "25 sec/side", note: "Knee on couch — CORE SAFE", isCore: true },
+    ],
+    1: [ // Day B – Upper Pull
+      { name: "Heavy DB Bent-Over Row", sets: 5, reps: "6", note: "Explosively up, 3-sec descent — heavier than Phase 1", isCore: false },
+      { name: "DB Renegade Row", sets: 4, reps: "6/side", note: "Push-up position, row each DB — full body stability", isCore: false },
+      { name: "DB Overhead Press (heavy)", sets: 4, reps: "6", note: "Heavier than Phase 1 — push for RPE 8", isCore: false },
+      { name: "DB Chest-Supported Row (stability ball)", sets: 4, reps: "10", note: "Chest on ball, arms hang — row both DBs", isCore: false },
+      { name: "Band Rear Delt Pull-Apart", sets: 3, reps: "15", note: "Running posture — keep shoulders packed", isCore: false },
+      { name: "DB Hammer Curl", sets: 3, reps: "12", note: "Neutral grip — brachialis strength", isCore: false },
+      { name: "Band Pallof Press + Hold", sets: 3, reps: "12/side", note: "3-sec hold at full extension — CORE SAFE", isCore: true },
+    ],
+    2: [ // Day C – Hinge/Posterior
+      { name: "Heavy KB/DB RDL", sets: 4, reps: "6", note: "Heavier than Phase 1 — 3-sec lowering", isCore: false },
+      { name: "DB Hip Thrust (floor, max)", sets: 5, reps: "8", note: "PR attempt — stack all available DBs across hips", isCore: false },
+      { name: "Single-Leg RDL (heavier DB)", sets: 4, reps: "8/side", note: "Heavier than Phase 1 — running hip stability", isCore: false },
+      { name: "Nordic Curl (couch)", sets: 3, reps: "8", note: "Reduce assistance vs Phase 1", isCore: false },
+      { name: "Stair Box Jump", sets: 3, reps: "6", note: "Jump onto bottom stair — full hip extension, soft landing", isCore: false },
+      { name: "DB Calf Raise (stair, weighted)", sets: 4, reps: "12", note: "Hold heavy DB — heavier than Phase 1", isCore: false },
+      { name: "Side Plank (full)", sets: 3, reps: "30 sec/side", note: "Full version — stop if coning — CORE SAFE", isCore: true },
+    ],
+    3: [ // Day D – Push + Power
+      { name: "DB Floor Press (heavy)", sets: 5, reps: "5", note: "Heavier than Phase 1 — RPE 8-9 final set", isCore: false },
+      { name: "Close-Grip DB Floor Press", sets: 3, reps: "8", note: "DBs touching, elbows in — tricep focus", isCore: false },
+      { name: "DB Arnold Press", sets: 3, reps: "10", note: "Replaces landmine — rotational shoulder strength", isCore: false },
+      { name: "Step Up explosive (stairs)", sets: 3, reps: "10/side", note: "Drive knee up fast — mimic running mechanics", isCore: false },
+      { name: "Lateral Bound", sets: 3, reps: "8/side", note: "Land on 1 leg, pause and hold — running power", isCore: false },
+      { name: "DB Farmer's Carry (heavy)", sets: 3, reps: "50m", note: "Heaviest DBs — heavier than Phase 1 — CORE SAFE", isCore: true },
+      { name: "Hollow Body Hold", sets: 3, reps: "25-35 sec", note: "Stop if coning — CORE SAFE", isCore: true },
+    ],
+  },
+  2: { // Phase 3 – Peak
+    0: [ // Day A – Lower Squat
+      { name: "KB/DB Goblet Squat (max load)", sets: 5, reps: "3", note: "Heaviest possible — treat like a 3RM attempt", isCore: false },
+      { name: "DB Pause Squat", sets: 3, reps: "5", note: "3-sec pause — max control under max effort", isCore: false },
+      { name: "DB Hip Thrust (floor, PR)", sets: 5, reps: "8", note: "Stack every DB you have — PR attempt", isCore: false },
+      { name: "DB Bulgarian Split Squat (heavy)", sets: 4, reps: "6/side", note: "Heaviest load of the cycle", isCore: false },
+      { name: "DB Walking Lunge (loaded)", sets: 3, reps: "12/side", note: "Marathon-specific endurance finisher", isCore: false },
+      { name: "Dead Bug (banded feet)", sets: 3, reps: "10/side", note: "Band around feet — max core challenge — CORE SAFE", isCore: true },
+      { name: "Copenhagen Plank (foot on couch)", sets: 3, reps: "35 sec/side", note: "Full version — CORE SAFE", isCore: true },
+    ],
+    1: [ // Day B – Upper Strength
+      { name: "Heavy DB Romanian Deadlift", sets: 5, reps: "3", note: "Heaviest DBs — explosive hip drive — treat as 3RM", isCore: false },
+      { name: "DB Renegade Row (heavy)", sets: 4, reps: "5/side", note: "Heaviest load — full body stability under tension", isCore: false },
+      { name: "DB Overhead Press (heavy)", sets: 4, reps: "5", note: "Push for a 5RM — RPE 9", isCore: false },
+      { name: "DB Pendlay-Style Row", sets: 4, reps: "5", note: "Start from floor each rep — explosive pull", isCore: false },
+      { name: "Band Face Pull", sets: 3, reps: "15", note: "Shoulder health — never skip this", isCore: false },
+      { name: "DB Chin-Up Curl", sets: 3, reps: "8", note: "Supinated grip curl with heavy DBs", isCore: false },
+      { name: "Band Pallof Press + Rotation", sets: 3, reps: "12/side", note: "Add rotation at full extension — CORE SAFE", isCore: true },
+    ],
+    2: [ // Day C – Posterior + Plyos
+      { name: "Heavy KB/DB Deadlift (max)", sets: 5, reps: "3", note: "Treat as 3RM — every kg counts", isCore: false },
+      { name: "DB Hip Thrust (1RM attempt)", sets: 4, reps: "3-5", note: "Max load — week 11 is PR attempt", isCore: false },
+      { name: "Single-Leg RDL (heaviest DB)", sets: 4, reps: "6/side", note: "Heaviest of the cycle — maximum hip stability", isCore: false },
+      { name: "Nordic Curl (unassisted, couch)", sets: 3, reps: "8", note: "No assistance — hamstring resilience for marathon", isCore: false },
+      { name: "Stair Box Jump (higher)", sets: 4, reps: "6", note: "Higher stair or stack — max power expression", isCore: false },
+      { name: "DB Calf Raise (stair, max)", sets: 4, reps: "10", note: "Max load — achilles health into race", isCore: false },
+      { name: "Side Plank + Hip Abduction", sets: 3, reps: "35 sec/side", note: "Lift top leg — glute med + obliques — CORE SAFE", isCore: true },
+    ],
+    3: [ // Day D – Power + Athletic
+      { name: "KB Clean", sets: 4, reps: "4/side", note: "Explosive triple extension — replaces power clean", isCore: false },
+      { name: "DB Push Press (heavy)", sets: 4, reps: "5", note: "Leg drive into overhead — maximum power", isCore: false },
+      { name: "Step Up explosive (stairs, heavy)", sets: 3, reps: "8/side", note: "Drive knee aggressively — marathon running mechanics", isCore: false },
+      { name: "Lateral Bound (max effort)", sets: 3, reps: "8/side", note: "Maximum distance — land and stick on 1 leg", isCore: false },
+      { name: "DB Farmer's Carry (max)", sets: 4, reps: "30m", note: "Heaviest possible — replaces sled push — CORE SAFE", isCore: false },
+      { name: "Ab Wheel Rollout", sets: 3, reps: "10-12", note: "Full or partial — only if NO coning — CORE SAFE", isCore: true },
+      { name: "Dead Hang (doorframe bar)", sets: 3, reps: "40 sec", note: "Spinal decompression + grip — if you have a pull-up bar", isCore: false },
+    ],
+  },
+};
+
+let useHomeWorkout = false;
+
+// ══════════════════════════════════════
+// WEIGHT SUGGESTION ENGINE
+// ══════════════════════════════════════
+function getSuggestion(exKey, targetRepsStr) {
+  const s = getState();
+  const exLogs = s.logs && s.logs[exKey];
+  if (!exLogs) return null;
+
+  const dates = Object.keys(exLogs).sort();
+  if (dates.length === 0) return null;
+
+  // Find most recent session with actual completed sets
+  let lastEntry = null, lastDate = null;
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const e = exLogs[dates[i]];
+    if (e && e.sets && e.sets.some(ss => ss.done && parseFloat(ss.weight) > 0)) {
+      lastEntry = e; lastDate = dates[i]; break;
+    }
+  }
+  if (!lastEntry) return null;
+
+  const doneSets = lastEntry.sets.filter(ss => ss.done);
+  const totalSets = lastEntry.sets.length;
+  const lastWeight = Math.max(...doneSets.map(ss => parseFloat(ss.weight) || 0));
+  if (lastWeight === 0) return null;
+
+  // Parse target reps — handle "10/side", "8-10", "30 sec", etc.
+  const targetNum = parseInt(targetRepsStr) || 8;
+  const avgReps = doneSets.reduce((sum, ss) => sum + (parseInt(ss.reps) || 0), 0) / (doneSets.length || 1);
+  const completedAllSets = doneSets.length >= totalSets;
+
+  const unit = s.unit || 'lbs';
+  const inc = unit === 'kg' ? 2.5 : 5;
+
+  let suggestedWeight, chipClass, arrow, reason;
+
+  if (completedAllSets && avgReps >= targetNum) {
+    suggestedWeight = lastWeight + inc;
+    chipClass = 'up'; arrow = '↑';
+    reason = `+${inc}${unit} — all sets completed last session`;
+  } else if (completedAllSets && avgReps >= targetNum * 0.85) {
+    suggestedWeight = lastWeight;
+    chipClass = 'same'; arrow = '=';
+    reason = `Same weight — reps nearly there`;
+  } else if (completedAllSets) {
+    suggestedWeight = lastWeight;
+    chipClass = 'same'; arrow = '=';
+    reason = `Same — work on hitting full reps`;
+  } else {
+    suggestedWeight = Math.max(lastWeight - inc, 0);
+    chipClass = 'down'; arrow = '↓';
+    reason = `−${inc}${unit} — didn't complete all sets last time`;
+  }
+
+  const ago = formatDate(lastDate);
+  return { lastWeight, suggestedWeight, chipClass, arrow, reason, ago, unit };
+}
+
+// ══════════════════════════════════════
+// STORAGE HELPERS
+// ══════════════════════════════════════
+function getState() {
+  return JSON.parse(localStorage.getItem('marathon_strength_state') || JSON.stringify({
+    startDate: '2026-05-14',
+    unit: 'lbs',
+    logs: {}   // key: "phase-day-week-date" -> {sets:[{reps,weight,done}]}
+  }));
+}
+function saveState(s) {
+  localStorage.setItem('marathon_strength_state', JSON.stringify(s));
+}
+
+// ══════════════════════════════════════
+// NAV
+// ══════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'dashboard') updateDashboard();
+  if (id === 'progress') updateProgress();
+  if (id === 'plan') renderPlan();
+  if (id === 'settings') loadSettings();
+}
+
+// ══════════════════════════════════════
+// WEEK / PHASE UTILITIES
+// ══════════════════════════════════════
+let selectedWeek = 1;
+let selectedDay = null;
+let sessionData = {};
+
+function getPhaseForWeek(w) {
+  if (w <= 4) return 0;
+  if (w <= 8) return 1;
+  return 2;
+}
+function getCurrentWeek() {
+  const s = getState();
+  const start = new Date(s.startDate);
+  const now = new Date();
+  const diff = Math.floor((now - start) / (1000*60*60*24*7));
+  return Math.min(Math.max(diff + 1, 1), 12);
+}
+function weekToPhase(w) { return PLAN.phases[getPhaseForWeek(w)]; }
+
+// ══════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════
+function updateDashboard() {
+  const s = getState();
+  const curWeek = getCurrentWeek();
+  const phaseIdx = getPhaseForWeek(curWeek);
+  const phase = PLAN.phases[phaseIdx];
+
+  // Phase badge
+  document.getElementById('db-phase-badge').className = 'phase-badge ' + phase.badgeClass;
+  document.getElementById('db-phase-badge').textContent = 'Phase ' + phase.id + ' · ' + phase.shortName;
+  document.getElementById('db-week-title').textContent = 'Week ' + curWeek + ' of 12';
+  document.getElementById('db-phase-focus').textContent = phase.focus;
+
+  // Progress bar
+  const pct = Math.round((curWeek - 1) / 12 * 100);
+  document.getElementById('db-overall-progress').style.width = pct + '%';
+  document.getElementById('db-progress-label').textContent = (curWeek - 1) + ' of 12 weeks complete';
+
+  // Header badge
+  document.getElementById('headerPhase').textContent = 'Phase ' + phase.id + ' · Wk ' + curWeek;
+
+  // Stats
+  const logs = s.logs || {};
+  const sessions = Object.keys(logs).length;
+  let totalSets = 0, prs = 0;
+  Object.values(logs).forEach(ex => {
+    Object.values(ex).forEach(logEntry => {
+      if (Array.isArray(logEntry.sets)) {
+        logEntry.sets.forEach(set => { if (set.done) totalSets++; });
+      }
+      if (logEntry.isPR) prs++;
+    });
+  });
+  document.getElementById('db-workouts-done').textContent = sessions;
+  document.getElementById('db-sets-done').textContent = totalSets;
+  document.getElementById('db-prs').textContent = prs;
+  document.getElementById('db-streak').textContent = calcStreak(s);
+
+  // Today's workout - guess from day of week
+  const dayOfWeek = new Date().getDay(); // 0=Sun,1=Mon,...
+  const dayMap = {1:0, 2:1, 3:2, 4:0, 5:3, 6:1, 0:2}; // Mon=A,Tue=B,Wed=C,Thu=A,Fri=D,Sat=B,Sun=C
+  const dayIdx = dayMap[dayOfWeek] !== undefined ? dayMap[dayOfWeek] : 0;
+  const todayDay = phase.days[dayIdx];
+
+  let todayHtml = `<div style="margin-bottom:8px;"><span class="phase-badge ${phase.badgeClass}">${todayDay.name} · ${todayDay.focus}</span></div>`;
+  todayDay.exercises.forEach((ex, i) => {
+    todayHtml += `<div class="today-ex">
+      <div class="today-ex-num">${i+1}</div>
+      <div>
+        <div class="today-ex-name">${ex.name}</div>
+        <div class="today-ex-detail">${ex.sets} sets × ${ex.reps}</div>
+      </div>
+      ${ex.isCore ? '<span class="core-tag">CORE</span>' : ''}
+    </div>`;
+  });
+  document.getElementById('db-today-content').innerHTML = todayHtml;
+
+  // Race countdown
+  const race = new Date('2026-10-11');
+  const today = new Date();
+  const daysLeft = Math.ceil((race - today) / (1000*60*60*24));
+  document.getElementById('db-days-to-race').textContent = daysLeft;
+}
+
+function calcStreak(s) {
+  // Count consecutive weeks with at least 2 logged sessions
+  const logs = s.logs || {};
+  let streak = 0;
+  const curWeek = getCurrentWeek();
+  for (let w = curWeek; w >= 1; w--) {
+    const weekKeys = Object.keys(logs).filter(k => k.includes('-w'+w+'-'));
+    if (weekKeys.length >= 2) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function goToLog() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-log').classList.add('active');
+  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+  const curWeek = getCurrentWeek();
+  buildWeekSelector(curWeek);
+  buildDaySelector();
+}
+
+// ══════════════════════════════════════
+// LOG WORKOUT PAGE
+// ══════════════════════════════════════
+function buildWeekSelector(activeWeek) {
+  selectedWeek = activeWeek || selectedWeek;
+  let html = '';
+  for (let w = 1; w <= 12; w++) {
+    const phaseIdx = getPhaseForWeek(w);
+    const p = PLAN.phases[phaseIdx];
+    const activeClass = w === selectedWeek ? 'active' : '';
+    html += `<div class="week-chip ${activeClass}" onclick="selectWeek(${w})">Wk ${w} <span style="opacity:0.6;font-size:0.65em">${p.shortName}</span></div>`;
+  }
+  document.getElementById('week-selector').innerHTML = html;
+}
+
+function selectWeek(w) {
+  selectedWeek = w;
+  selectedDay = null;
+  buildWeekSelector(w);
+  buildDaySelector();
+  document.getElementById('log-workout-area').style.display = 'none';
+  document.getElementById('log-empty').style.display = 'block';
+}
+
+function buildDaySelector() {
+  const phase = weekToPhase(selectedWeek);
+  let html = '';
+  phase.days.forEach((day, i) => {
+    html += `<div class="day-btn" onclick="selectDay(${i})">
+      <div class="day-btn-icon">${day.icon}</div>
+      <div class="day-btn-name">${day.name}</div>
+      <div class="day-btn-sub">${day.focus}</div>
+    </div>`;
+  });
+  document.getElementById('day-selector').innerHTML = html;
+}
+
+function selectDay(idx) {
+  selectedDay = idx;
+  document.querySelectorAll('.day-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i === idx);
+  });
+  renderDayExercises();
+}
+
+function toggleHomeWorkout() {
+  useHomeWorkout = document.getElementById('home-toggle-input').checked;
+  renderDayExercises();
+}
+
+function renderDayExercises() {
+  if (selectedDay === null) return;
+  const phase = weekToPhase(selectedWeek);
+  const phaseIdx = getPhaseForWeek(selectedWeek);
+  const day = phase.days[selectedDay];
+  const s = getState();
+
+  // Pick gym or home exercises
+  const exercises = useHomeWorkout
+    ? (HOME_PLAN[phaseIdx] && HOME_PLAN[phaseIdx][selectedDay]) || day.exercises
+    : day.exercises;
+
+  const locationTag = useHomeWorkout ? ' 🏠' : '';
+  document.getElementById('log-day-title').textContent = day.name + ' · ' + day.focus + locationTag;
+  document.getElementById('log-day-subtitle').textContent = 'Week ' + selectedWeek + ' · ' + phase.name + ' · ' + phase.intensity;
+  document.getElementById('log-workout-area').style.display = 'block';
+  document.getElementById('log-empty').style.display = 'none';
+
+  const logKey = `p${phase.id}-d${day.id}-w${selectedWeek}${useHomeWorkout ? '-home' : ''}`;
+  sessionData = {};
+
+  let html = '';
+  exercises.forEach((ex, exIdx) => {
+    const exKey = logKey + '-' + ex.name.replace(/\s+/g,'_').replace(/[()\/]/g,'');
+    const existing = (s.logs[exKey] && s.logs[exKey][getTodayStr()]) || null;
+    const numSets = existing ? existing.sets.length : ex.sets;
+    sessionData[exKey] = { exName: ex.name, sets: [] };
+
+    // Get weight suggestion
+    const sugg = getSuggestion(exKey, ex.reps);
+    const suggWeight = sugg ? sugg.suggestedWeight : null;
+
+    // Suggestion chip HTML
+    let suggChip = '';
+    if (sugg) {
+      suggChip = `<div class="suggestion-chip ${sugg.chipClass}">
+        ${sugg.arrow} ${sugg.suggestedWeight} ${sugg.unit} — ${sugg.reason} <span style="opacity:0.6;margin-left:4px;">(${sugg.ago})</span>
+      </div>`;
+    } else {
+      suggChip = `<div class="suggestion-chip first">First session — log your starting weight!</div>`;
+    }
+
+    let setsHtml = '';
+    for (let si = 0; si < numSets; si++) {
+      const set = existing ? existing.sets[si] : { reps: '', weight: suggWeight || '', done: false };
+      const doneClass = set && set.done ? 'done' : '';
+      setsHtml += buildSetRow(si, set, doneClass, exKey, suggWeight);
+    }
+
+    html += `<div class="ex-logger" id="exlog-${exIdx}">
+      <div class="ex-logger-header">
+        <div style="flex:1;">
+          <div class="flex-row" style="align-items:flex-start;gap:8px;">
+            <div class="ex-name">${ex.name} ${ex.isCore ? '💚' : ''}</div>
+            ${ytBtn(ex.name)}
+          </div>
+          <div class="ex-target">Target: ${ex.sets} × ${ex.reps}</div>
+          ${ex.note ? `<div class="ex-note">${ex.note}</div>` : ''}
+          ${suggChip}
+        </div>
+      </div>
+      <div class="set-header">
+        <span>Set</span><span>Weight</span><span>Reps</span><span></span><span>✓</span>
+      </div>
+      <div id="sets-${exIdx}">${setsHtml}</div>
+      <button class="add-set-btn" onclick="addSet(${exIdx}, '${exKey}')">+ Add Set</button>
+    </div>`;
+  });
+  document.getElementById('exercise-list').innerHTML = html;
+}
+
+function buildSetRow(si, set, doneClass, exKey, suggWeight) {
+  const s = getState();
+  const unit = s.unit || 'lbs';
+  // Pre-fill with existing data, then suggestion, then empty
+  const weightVal = (set && set.weight) ? set.weight : (suggWeight || '');
+  const repsVal   = (set && set.reps)   ? set.reps   : '';
+  return `<div class="set-row" id="setrow-${exKey}-${si}">
+    <span class="set-label">S${si+1}</span>
+    <input type="number" class="set-input" placeholder="${unit}" step="0.5"
+      value="${weightVal}"
+      oninput="updateSet('${exKey}', ${si}, 'weight', this.value)"
+      id="w-${exKey}-${si}"
+      style="${!set.weight && suggWeight ? 'color:var(--teal);' : ''}">
+    <input type="number" class="set-input" placeholder="reps"
+      value="${repsVal}"
+      oninput="updateSet('${exKey}', ${si}, 'reps', this.value)"
+      id="r-${exKey}-${si}">
+    <div></div>
+    <button class="set-check ${doneClass}" onclick="toggleSetDone('${exKey}', ${si}, this)" id="chk-${exKey}-${si}">
+      ${set && set.done ? '✓' : ''}
+    </button>
+  </div>`;
+}
+
+let setCounts = {};
+function addSet(exIdx, exKey) {
+  const container = document.getElementById('sets-' + exIdx);
+  const existing = container.querySelectorAll('.set-row').length;
+  const newRow = document.createElement('div');
+  newRow.innerHTML = buildSetRow(existing, {reps:'',weight:'',done:false}, '', exKey);
+  container.appendChild(newRow.firstElementChild);
+}
+
+function updateSet(exKey, si, field, val) {
+  if (!sessionData[exKey]) sessionData[exKey] = { exName: exKey, sets: [] };
+  while (sessionData[exKey].sets.length <= si) sessionData[exKey].sets.push({reps:'',weight:'',done:false});
+  sessionData[exKey].sets[si][field] = val;
+}
+
+function toggleSetDone(exKey, si, btn) {
+  if (!sessionData[exKey]) sessionData[exKey] = { exName: exKey, sets: [] };
+  while (sessionData[exKey].sets.length <= si) sessionData[exKey].sets.push({reps:'',weight:'',done:false});
+  // Grab current inputs
+  const wEl = document.getElementById('w-' + exKey + '-' + si);
+  const rEl = document.getElementById('r-' + exKey + '-' + si);
+  if (wEl) sessionData[exKey].sets[si].weight = wEl.value;
+  if (rEl) sessionData[exKey].sets[si].reps = rEl.value;
+  sessionData[exKey].sets[si].done = !sessionData[exKey].sets[si].done;
+  btn.classList.toggle('done');
+  btn.textContent = sessionData[exKey].sets[si].done ? '✓' : '';
+}
+
+function saveWorkout() {
+  if (selectedDay === null) { showToast('Select a day first!'); return; }
+  const s = getState();
+  const today = getTodayStr();
+  if (!s.logs) s.logs = {};
+
+  let totalDone = 0;
+  Object.entries(sessionData).forEach(([exKey, exData]) => {
+    if (!s.logs[exKey]) s.logs[exKey] = {};
+    // Also read from DOM for any un-toggled inputs
+    const phase = weekToPhase(selectedWeek);
+    const day = phase.days[selectedDay];
+    exData.sets.forEach((set, si) => {
+      const wEl = document.getElementById('w-' + exKey + '-' + si);
+      const rEl = document.getElementById('r-' + exKey + '-' + si);
+      if (wEl) set.weight = wEl.value;
+      if (rEl) set.reps = rEl.value;
+    });
+
+    // Check for PR
+    let bestWeight = 0;
+    exData.sets.forEach(set => {
+      if (set.done && parseFloat(set.weight) > bestWeight) bestWeight = parseFloat(set.weight);
+      if (set.done) totalDone++;
+    });
+
+    let isPR = false;
+    const prevLogs = s.logs[exKey];
+    const prevBest = Math.max(0, ...Object.values(prevLogs).map(l => {
+      if (!l.sets) return 0;
+      return Math.max(0, ...l.sets.filter(ss => ss.done).map(ss => parseFloat(ss.weight) || 0));
+    }));
+    if (bestWeight > prevBest && bestWeight > 0) isPR = true;
+
+    s.logs[exKey][today] = { sets: exData.sets, isPR, bestWeight, week: selectedWeek };
+  });
+
+  saveState(s);
+  showToast(totalDone > 0 ? '✅ Session saved! ' + totalDone + ' sets logged.' : '💾 Session saved!');
+  updateDashboard();
+}
+
+// ══════════════════════════════════════
+// PROGRESS PAGE
+// ══════════════════════════════════════
+let progressChartInstance = null;
+
+function updateProgress() {
+  const s = getState();
+  const logs = s.logs || {};
+
+  // Populate exercise dropdown
+  const sel = document.getElementById('progress-ex-select');
+  const allExNames = new Set();
+  PLAN.phases.forEach(p => p.days.forEach(d => d.exercises.forEach(e => allExNames.add(e.name))));
+  sel.innerHTML = '<option value="">Select an exercise...</option>';
+  allExNames.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+
+  // Session history
+  const sessKeys = {};
+  Object.entries(logs).forEach(([exKey, dayLogs]) => {
+    Object.entries(dayLogs).forEach(([date, entry]) => {
+      if (!sessKeys[date]) sessKeys[date] = { date, exercises: [], totalSets: 0, prs: 0 };
+      sessKeys[date].exercises.push(exKey.split('-').slice(0,3).join('-'));
+      if (entry.sets) sessKeys[date].totalSets += entry.sets.filter(s => s.done).length;
+      if (entry.isPR) sessKeys[date].prs++;
+    });
+  });
+
+  const sortedDates = Object.keys(sessKeys).sort().reverse();
+  let histHtml = '';
+  if (sortedDates.length === 0) {
+    histHtml = '<div class="empty-state"><div class="icon">📝</div><p>No sessions logged yet. Start logging to see your history here!</p></div>';
+  } else {
+    sortedDates.forEach(date => {
+      const d = sessKeys[date];
+      const exSet = [...new Set(d.exercises)];
+      histHtml += `<div class="log-entry">
+        <div>
+          <div class="log-date">${formatDate(date)}</div>
+          <div class="log-sets">${d.totalSets} sets completed</div>
+        </div>
+        <div style="text-align:right;">
+          ${d.prs > 0 ? `<div class="pr-badge">🏆 ${d.prs} PR${d.prs>1?'s':''}</div>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+  document.getElementById('log-history-list').innerHTML = histHtml;
+
+  // Core milestones
+  const milestones = [
+    { name: "Dead Bug (consistent)", phase: 1, achieved: false },
+    { name: "Bird Dog 3×10 each side", phase: 1, achieved: false },
+    { name: "Pallof Press – 3 weeks", phase: 1, achieved: false },
+    { name: "Side Plank (full, 30 sec)", phase: 2, achieved: false },
+    { name: "Hollow Body Hold (30 sec)", phase: 2, achieved: false },
+    { name: "Copenhagen Plank (full)", phase: 2, achieved: false },
+    { name: "Ab Wheel Rollout (no coning)", phase: 3, achieved: false },
+    { name: "Side Plank + Hip Abduction", phase: 3, achieved: false },
+  ];
+  const curWeek = getCurrentWeek();
+  let mHtml = '';
+  milestones.forEach(m => {
+    const unlocked = (m.phase === 1 && curWeek >= 1) || (m.phase === 2 && curWeek >= 5) || (m.phase === 3 && curWeek >= 9);
+    const pBadge = m.phase === 1 ? 'p1' : m.phase === 2 ? 'p2' : 'p3';
+    mHtml += `<div class="flex-row" style="margin-bottom:10px;">
+      <div style="font-size:1.2rem;margin-right:4px;">${unlocked ? '🟢' : '⚪'}</div>
+      <div>
+        <div style="font-size:0.83rem;color:${unlocked?'var(--text)':'var(--muted)'};">${m.name}</div>
+        <span class="phase-badge ${pBadge}" style="margin-top:3px;display:inline-block;">Phase ${m.phase}</span>
+      </div>
+    </div>`;
+  });
+  document.getElementById('core-milestones').innerHTML = mHtml;
+}
+
+function updateProgressChart() {
+  const exName = document.getElementById('progress-ex-select').value;
+  if (!exName) return;
+
+  const s = getState();
+  const logs = s.logs || {};
+  const unit = s.unit || 'lbs';
+
+  // Find all log entries for this exercise
+  const dataPoints = [];
+  Object.entries(logs).forEach(([exKey, dayLogs]) => {
+    if (!exKey.includes(exName.replace(/\s+/g,'_'))) return;
+    Object.entries(dayLogs).forEach(([date, entry]) => {
+      if (!entry.sets) return;
+      const best = Math.max(...entry.sets.filter(ss => ss.done).map(ss => parseFloat(ss.weight) || 0));
+      if (best > 0) dataPoints.push({ date, weight: best, isPR: entry.isPR });
+    });
+  });
+  dataPoints.sort((a,b) => a.date.localeCompare(b.date));
+
+  const ctx = document.getElementById('progressChart').getContext('2d');
+  if (progressChartInstance) progressChartInstance.destroy();
+
+  if (dataPoints.length === 0) {
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data logged for ' + exName + ' yet.', ctx.canvas.width/2, 100);
+    return;
+  }
+
+  progressChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dataPoints.map(d => formatDate(d.date)),
+      datasets: [{
+        label: exName + ' (' + unit + ')',
+        data: dataPoints.map(d => d.weight),
+        borderColor: '#06b6d4',
+        backgroundColor: 'rgba(6,182,212,0.1)',
+        pointBackgroundColor: dataPoints.map(d => d.isPR ? '#f97316' : '#06b6d4'),
+        pointRadius: dataPoints.map(d => d.isPR ? 7 : 5),
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, title: { display: true, text: unit, color: '#94a3b8' } }
+      },
+      plugins: {
+        legend: { labels: { color: '#e2e8f0' } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const dp = dataPoints[ctx.dataIndex];
+              return `${ctx.parsed.y} ${unit}${dp.isPR ? ' 🏆 PR!' : ''}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════
+// PLAN REFERENCE
+// ══════════════════════════════════════
+function renderPlan() {
+  let html = '';
+  PLAN.phases.forEach((phase, pi) => {
+    html += `<div class="phase-section">
+      <div class="phase-header" onclick="togglePhase(${pi})">
+        <div class="phase-badge ${phase.badgeClass}">${phase.shortName}</div>
+        <div class="phase-header-text">
+          <h3>${phase.name}</h3>
+          <p>${phase.weeks} · ${phase.intensity}</p>
+        </div>
+        <div class="phase-chevron" id="chevron-${pi}">▼</div>
+      </div>
+      <div class="phase-body ${pi === 0 ? 'open' : ''}" id="phase-body-${pi}">
+        <div style="padding:8px 4px 4px;">
+          <div class="tip-box" style="margin-bottom:10px;">
+            <strong>Phase Focus:</strong> ${phase.focus}
+          </div>`;
+    phase.days.forEach(day => {
+      html += `<div class="workout-day-card">
+        <div class="workout-day-title">${day.icon} ${day.name} · ${day.focus}</div>`;
+      day.exercises.forEach(ex => {
+        html += `<div class="plan-ex-row">
+          <div class="plan-ex-name">${ex.name} ${ex.isCore ? '💚' : ''}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span class="plan-ex-scheme">${ex.sets}×${ex.reps}</span>
+            ${ytBtn(ex.name)}
+          </div>
+        </div>`;
+        if (ex.note) {
+          html += `<div class="plan-ex-note-small" style="padding:2px 0 5px 0;color:var(--muted);font-size:0.68rem;">${ex.note}</div>`;
+        }
+      });
+      html += `</div>`;
+    });
+    html += `</div></div></div>`;
+  });
+
+  html += `<div class="tip-box" style="margin-top:8px;">
+    <strong>💚 Core Key:</strong> Exercises marked 💚 are diastasis-recti safe and core-focused. Always check for coning/doming during these movements. If present, regress immediately.
+  </div>`;
+
+  document.getElementById('plan-content').innerHTML = html;
+}
+
+function togglePhase(pi) {
+  const body = document.getElementById('phase-body-' + pi);
+  const chevron = document.getElementById('chevron-' + pi);
+  body.classList.toggle('open');
+  chevron.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+// ══════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════
+function loadSettings() {
+  const s = getState();
+  document.getElementById('start-date-input').value = s.startDate || '2026-05-14';
+  const unit = s.unit || 'lbs';
+  document.getElementById('unit-kg').className = 'btn btn-ghost' + (unit==='kg'?' btn-primary':'');
+  document.getElementById('unit-lbs').className = 'btn btn-ghost' + (unit==='lbs'?' btn-primary':'');
+  if (unit === 'kg') {
+    document.getElementById('unit-kg').className = 'btn btn-primary';
+    document.getElementById('unit-lbs').className = 'btn btn-ghost';
+  } else {
+    document.getElementById('unit-lbs').className = 'btn btn-primary';
+    document.getElementById('unit-kg').className = 'btn btn-ghost';
+  }
+}
+
+function saveStartDate() {
+  const s = getState();
+  s.startDate = document.getElementById('start-date-input').value;
+  saveState(s);
+  showToast('Start date updated!');
+}
+
+function setUnit(unit) {
+  const s = getState();
+  s.unit = unit;
+  saveState(s);
+  loadSettings();
+  showToast('Weight unit set to ' + unit);
+}
+
+function exportData() {
+  const s = getState();
+  const blob = new Blob([JSON.stringify(s, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'strength-tracker-data-' + getTodayStr() + '.json';
+  a.click();
+}
+
+function clearData() {
+  if (confirm('Clear all logged workout data? Your settings will be kept. This cannot be undone.')) {
+    const s = getState();
+    s.logs = {};
+    saveState(s);
+    showToast('Workout data cleared.');
+    updateDashboard();
+  }
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function ytLink(exName) {
+  const query = encodeURIComponent('how to ' + exName + ' exercise form technique');
+  return 'https://www.youtube.com/results?search_query=' + query;
+}
+function ytBtn(exName) {
+  return `<a href="${ytLink(exName)}" target="_blank" class="yt-btn">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .6 5.8 3 3 0 0 0 2 2.1c2 .6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+    Watch
+  </a>`;
+}
+
+function getTodayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function formatDate(str) {
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  updateDashboard();
+  // Build week selector default
+  buildWeekSelector(getCurrentWeek());
+  buildDaySelector();
+});
+</script>
+</body>
+</html>
